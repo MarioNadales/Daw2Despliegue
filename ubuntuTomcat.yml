@@ -144,11 +144,34 @@ Resources:
           # Crear el archivo de servicio de systemd para Tomcat
           echo -e "[Unit]\nDescription=Tomcat\nAfter=network.target\n\n[Service]\nType=forking\nUser=tomcat\nGroup=tomcat\nEnvironment=\"JAVA_HOME=$JAVA_HOME\"\nEnvironment=\"JAVA_OPTS=-Djava.security.egd=file:///dev/urandom\"\nEnvironment=\"CATALINA_BASE=/opt/tomcat\"\nEnvironment=\"CATALINA_HOME=/opt/tomcat\"\nEnvironment=\"CATALINA_PID=/opt/tomcat/temp/tomcat.pid\"\nEnvironment=\"CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC\"\n\nExecStart=/opt/tomcat/bin/startup.sh\nExecStop=/opt/tomcat/bin/shutdown.sh\n\nRestartSec=10\nRestart=always\n\n[Install]\nWantedBy=multi-user.target" | sudo tee /etc/systemd/system/tomcat.service > /dev/null
 
+          # ----> Despliegue
+          
+
           # Recargar los servicios de systemd
           sudo systemctl daemon-reload
 
           # Habilitar el servicio Tomcat para que se inicie en el arranque
           sudo systemctl enable tomcat.service
+
+          # Clonar el repositorio de tu aplicación desde GitHub (si es necesario)
+          git clone https://github.com/DavidHormigoRamirez/springholamundo /tmp/app
+
+          # Acceder al directorio de tu aplicación
+          cd /tmp/app
+
+          # Construir la aplicación con Gradle
+          bash gradlew build
+
+          # gradle build
+
+          war_file=$(ls /tmp/app/build/libs/holamundo-0.0.1-SNAPSHOT-plain.war)
+
+          # Copiar el archivo WAR generado a la carpeta de despliegue de Tomcat
+          sudo mv $war_file /opt/tomcat/webapps/
+
+          # Cambiar el propietario y los permisos del archivo WAR
+          sudo chown tomcat:tomcat /opt/tomcat/webapps/$(basename $war_file)
+          sudo chmod 644 /opt/tomcat/webapps/$(basename $war_file)
 
           # Iniciar el servicio Tomcat
           sudo systemctl start tomcat.service
@@ -180,4 +203,4 @@ Outputs:
       Ref: EC2Instance
   URL:
     Description: URL del servicio web
-    Value: !Sub 'http://${EC2Instance.PublicDnsName}:8080'
+    Value: !Sub 'http://${EC2Instance.PublicDnsName}:8080/holamundo-0.0.1-SNAPSHOT-plain/hola'
